@@ -161,11 +161,15 @@ const server = http.createServer(async (req, res) => {
     return json(res, 404, { error: 'Unknown endpoint.' });
   }
 
-  // static files
-  const file = path.join(PUB, url.pathname === '/' ? 'index.html' : path.normalize(url.pathname));
+  // static files; extensionless paths fall back to .html (so /host works)
+  let file = path.join(PUB, url.pathname === '/' ? 'index.html' : path.normalize(url.pathname));
   if (!file.startsWith(PUB)) { res.writeHead(403); return res.end(); }
+  if (!path.extname(file) && !fs.existsSync(file)) file += '.html';
   fs.readFile(file, (err, data) => {
-    if (err) { res.writeHead(404); return res.end('Not found'); }
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/html' });
+      return res.end('<p style="font-family:sans-serif">Page not found — try <a href="/">the join page</a> or <a href="/host.html">host controls</a>.</p>');
+    }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'text/plain' });
     res.end(data);
   });
