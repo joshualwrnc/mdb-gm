@@ -1,0 +1,10 @@
+{
+  "name": "guess-who-fun-facts",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
