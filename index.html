@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guess Who: Fun Fact Edition</title>
+<style>
+  :root { --bg:#1a1d21; --card:#222529; --accent:#36c5f0; --good:#2eb67d; --text:#e8e8e8; --muted:#9a9da1; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; min-height:100vh; }
+  main { width:100%; max-width:680px; padding:24px; }
+  h1 { font-size:1.6rem; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 24px; }
+  textarea { width:100%; min-height:160px; background:var(--card); color:var(--text); border:1px solid #3a3d42; border-radius:8px; padding:12px; font-size:0.95rem; font-family:inherit; resize:vertical; }
+  button { background:var(--accent); color:#10243a; border:none; border-radius:8px; padding:10px 18px; font-size:1rem; font-weight:600; cursor:pointer; margin-top:12px; }
+  button:hover { filter:brightness(1.1); }
+  button.secondary { background:#3a3d42; color:var(--text); }
+  .hidden { display:none; }
+  .fact-card { background:var(--card); border-radius:12px; padding:28px; margin:20px 0; font-size:1.4rem; line-height:1.5; text-align:center; min-height:120px; display:flex; align-items:center; justify-content:center; }
+  .progress { color:var(--muted); text-align:center; }
+  .names { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:16px 0; }
+  .names button { margin:0; padding:8px 14px; background:#3a3d42; color:var(--text); font-weight:500; }
+  .names button.answer { background:var(--good); color:#08291c; }
+  .reveal { text-align:center; font-size:1.2rem; margin:16px 0; }
+  .reveal b { color:var(--good); }
+  .controls { display:flex; gap:10px; justify-content:center; }
+  table { width:100%; border-collapse:collapse; margin-top:16px; }
+  td, th { padding:8px 12px; text-align:left; border-bottom:1px solid #3a3d42; }
+  .hint { color:var(--muted); font-size:0.85rem; margin-top:8px; }
+  .err { color:#e01e5a; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Guess Who: Fun Fact Edition 🕵️</h1>
+  <p class="sub">Everyone submits a fun fact to the host. The team guesses who it's from.</p>
+
+  <!-- Setup -->
+  <section id="setup">
+    <p>Enter one entry per line as <code>Name: fun fact</code></p>
+    <textarea id="entries" placeholder="Angel: I once won a hot dog eating contest
+Josh: I have a weird fact, jk"></textarea>
+    <p class="hint">Facts are shuffled. Names stay hidden until you reveal each one. Click a name to mark the team's guess and track who's hardest to guess.</p>
+    <p id="setupErr" class="err hidden"></p>
+    <button onclick="startGame()">Start game</button>
+  </section>
+
+  <!-- Game -->
+  <section id="game" class="hidden">
+    <p class="progress"><span id="round"></span></p>
+    <div class="fact-card" id="fact"></div>
+    <div class="names" id="nameButtons"></div>
+    <p class="reveal hidden" id="reveal"></p>
+    <div class="controls">
+      <button id="revealBtn" onclick="reveal()">Reveal answer</button>
+      <button id="nextBtn" class="hidden" onclick="next()">Next fact →</button>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section id="results" class="hidden">
+    <h2>Results 🎉</h2>
+    <p id="summary"></p>
+    <table id="resultTable"></table>
+    <button class="secondary" onclick="location.reload()">Play again</button>
+  </section>
+</main>
+
+<script>
+let facts = [], idx = 0, guess = null;
+
+function startGame() {
+  const lines = document.getElementById('entries').value.split('\n').map(l => l.trim()).filter(Boolean);
+  const err = document.getElementById('setupErr');
+  facts = [];
+  for (const line of lines) {
+    const m = line.match(/^([^:]+):\s*(.+)$/);
+    if (!m) { err.textContent = `Couldn't parse line: "${line}" — use "Name: fact"`; err.classList.remove('hidden'); return; }
+    facts.push({ name: m[1].trim(), fact: m[2].trim(), guessed: null });
+  }
+  if (facts.length < 2) { err.textContent = 'Need at least 2 entries to play.'; err.classList.remove('hidden'); return; }
+  // shuffle
+  for (let i = facts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [facts[i], facts[j]] = [facts[j], facts[i]];
+  }
+  idx = 0;
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  showFact();
+}
+
+function showFact() {
+  guess = null;
+  const f = facts[idx];
+  document.getElementById('round').textContent = `Fact ${idx + 1} of ${facts.length}`;
+  document.getElementById('fact').textContent = `“${f.fact}”`;
+  document.getElementById('reveal').classList.add('hidden');
+  document.getElementById('revealBtn').classList.remove('hidden');
+  document.getElementById('nextBtn').classList.add('hidden');
+  const div = document.getElementById('nameButtons');
+  div.innerHTML = '';
+  [...new Set(facts.map(x => x.name))].sort().forEach(name => {
+    const b = document.createElement('button');
+    b.textContent = name;
+    b.onclick = () => {
+      if (facts[idx].guessed !== null) return;
+      guess = name;
+      [...div.children].forEach(c => c.style.outline = '');
+      b.style.outline = '2px solid var(--accent)';
+    };
+    div.appendChild(b);
+  });
+}
+
+function reveal() {
+  const f = facts[idx];
+  f.guessed = guess;
+  const correct = guess === f.name;
+  const r = document.getElementById('reveal');
+  r.innerHTML = `It was <b>${f.name}</b>!` + (guess ? (correct ? ' ✅ The team got it!' : ` ❌ The team guessed ${guess}.`) : '');
+  r.classList.remove('hidden');
+  [...document.getElementById('nameButtons').children].forEach(b => {
+    if (b.textContent === f.name) b.classList.add('answer');
+  });
+  document.getElementById('revealBtn').classList.add('hidden');
+  document.getElementById('nextBtn').classList.remove('hidden');
+}
+
+function next() {
+  idx++;
+  if (idx >= facts.length) return showResults();
+  showFact();
+}
+
+function showResults() {
+  document.getElementById('game').classList.add('hidden');
+  document.getElementById('results').classList.remove('hidden');
+  const right = facts.filter(f => f.guessed === f.name).length;
+  document.getElementById('summary').textContent = `The team guessed ${right} of ${facts.length} correctly.`;
+  const rows = facts.map(f =>
+    `<tr><td>${f.fact}</td><td>${f.name}</td><td>${f.guessed === f.name ? '✅' : f.guessed ? `❌ (guessed ${f.guessed})` : '—'}</td></tr>`);
+  document.getElementById('resultTable').innerHTML =
+    '<tr><th>Fact</th><th>Who</th><th>Guessed?</th></tr>' + rows.join('');
+}
+</script>
+</body>
+</html>
