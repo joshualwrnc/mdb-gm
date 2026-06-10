@@ -8,13 +8,14 @@ Team game: everyone submits a fun fact, then the team votes on whose fact is who
 node server.js
 ```
 
-- Players open `http://<your-ip>:3000`, enter their name + fact, and wait in the lobby.
-- The host opens `http://<your-ip>:3000/host.html`, sees who's in, and hits **Start game**.
+- The host opens `http://<your-ip>:3000/host.html` and hits **Create a new game** — they get a 4-letter game code and a join link to share.
+- Players open the join link (or go to `http://<your-ip>:3000` and type the code), enter their name + fact, and wait in the lobby.
+- When everyone's in, the host hits **Start game**.
 - Each round shows one fact; everyone votes for who they think wrote it (the author sits the round out and is told to act natural 🤫).
 - The host reveals the answer — correct voters get a point — then advances to the next fact.
 - Final screen shows the leaderboard.
 
-No dependencies, state lives in memory. **Reset** on the host page wipes everything for a new game.
+No dependencies, state lives in memory. Each game is its own room, so any number of teams can play at the same time on one server — just create separate games. Rooms expire after 24 hours of inactivity, and **Reset** on the host page wipes a room for a rematch.
 
 ### Sharing a link with the team
 

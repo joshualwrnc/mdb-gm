@@ -9,7 +9,16 @@
 <body>
 <main>
   <h1>Host controls 🎛️</h1>
-  <p class="sub">Share the main page link with the team, then run the game from here.</p>
+
+  <!-- Create game -->
+  <section id="create">
+    <p class="sub">Start a fresh game and get a code your team uses to join.</p>
+    <button onclick="createGame()">Create a new game</button>
+  </section>
+
+  <section id="game" class="hidden">
+  <p class="sub">Game code: <b id="codeLabel" style="color:var(--accent)"></b> — players join at <span id="joinLink" style="color:var(--accent)"></span>
+    <button class="secondary" style="padding:4px 10px;font-size:0.8rem" onclick="copyLink()">copy link</button></p>
 
   <p class="progress" id="info"></p>
   <div class="fact-card hidden" id="fact"></div>
@@ -24,13 +33,26 @@
     <button class="secondary" onclick="if(confirm('Reset the whole game? All facts and scores are wiped.')) act('reset')">Reset</button>
   </div>
   <p id="err" class="err"></p>
+  </section>
 </main>
 
 <script>
+const room = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
+
 async function api(path, data) {
-  const r = await fetch(path, data ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) } : undefined);
+  const sep = path.includes('?') ? '&' : '?';
+  const r = await fetch(path + sep + 'room=' + room,
+    data ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) } : undefined);
   return r.json();
 }
+
+async function createGame() {
+  const r = await (await fetch('/api/create', { method:'POST' })).json();
+  location.search = '?room=' + r.code;
+}
+
+function playerLink() { return location.origin + '/?room=' + room; }
+function copyLink() { navigator.clipboard.writeText(playerLink()); }
 
 async function act(action) {
   const r = await api('/api/host', { action });
@@ -43,6 +65,7 @@ function toggle(id, on) { document.getElementById(id).classList.toggle('hidden',
 async function poll() {
   const s = await api('/api/state?player=');
   const info = document.getElementById('info');
+  if (s.error) { info.textContent = s.error + ' '; const a = document.createElement('a'); a.href = 'host.html'; a.textContent = 'Create a new one'; a.style.color = 'var(--accent)'; info.appendChild(a); return; }
   toggle('startBtn', s.phase === 'lobby');
   toggle('revealBtn', s.phase === 'vote');
   toggle('nextBtn', s.phase === 'reveal');
@@ -75,8 +98,14 @@ async function poll() {
     [...document.querySelectorAll('#scores td:nth-child(2)')].forEach((td, i) => td.textContent = s.scores[i].name);
   }
 }
-poll();
-setInterval(poll, 2000);
+if (room) {
+  document.getElementById('create').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  document.getElementById('codeLabel').textContent = room;
+  document.getElementById('joinLink').textContent = playerLink();
+  poll();
+  setInterval(poll, 2000);
+}
 </script>
 </body>
 </html>

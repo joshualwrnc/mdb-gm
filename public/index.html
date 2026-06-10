@@ -11,6 +11,14 @@
   <h1>Guess Who: Fun Fact Edition 🕵️</h1>
   <p class="sub">Submit a fun fact, then vote on whose fact is whose.</p>
 
+  <!-- Enter game code -->
+  <section id="code" class="hidden">
+    <input id="codeInput" placeholder="Game code (e.g. KXQZ)" maxlength="4" style="text-transform:uppercase">
+    <p id="codeErr" class="err hidden"></p>
+    <button onclick="enterCode()">Join game</button>
+    <p class="status" style="margin-top:16px">Hosting? <a href="host.html" style="color:var(--accent)">Create a game</a></p>
+  </section>
+
   <!-- Join -->
   <section id="join">
     <input id="name" placeholder="Your name" maxlength="40">
@@ -51,11 +59,19 @@
 </main>
 
 <script>
-let me = localStorage.getItem('gw-player');
+const room = (new URLSearchParams(location.search).get('room') || '').toUpperCase();
+let me = room ? localStorage.getItem('gw-player-' + room) : null;
 let lastPhase = null;
 
+function enterCode() {
+  const c = document.getElementById('codeInput').value.trim().toUpperCase();
+  if (c) location.search = '?room=' + c;
+}
+
 async function api(path, data) {
-  const r = await fetch(path, data ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) } : undefined);
+  const sep = path.includes('?') ? '&' : '?';
+  const r = await fetch(path + sep + 'room=' + room,
+    data ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) } : undefined);
   return r.json();
 }
 
@@ -66,12 +82,12 @@ async function join() {
   const err = document.getElementById('joinErr');
   if (r.error) { err.textContent = r.error; err.classList.remove('hidden'); return; }
   me = r.id;
-  localStorage.setItem('gw-player', me);
+  localStorage.setItem('gw-player-' + room, me);
   poll();
 }
 
 function show(id) {
-  for (const s of ['join','lobby','vote','reveal','done'])
+  for (const s of ['code','join','lobby','vote','reveal','done'])
     document.getElementById(s).classList.toggle('hidden', s !== id);
 }
 
@@ -84,6 +100,13 @@ async function vote(name, btn) {
 }
 
 function render(s) {
+  if (s.error) {
+    show('code');
+    const err = document.getElementById('codeErr');
+    err.textContent = s.error;
+    err.classList.remove('hidden');
+    return;
+  }
   if (s.phase === 'lobby') {
     if (!s.joined) { show('join'); return; }
     show('lobby');
@@ -133,8 +156,8 @@ function render(s) {
 async function poll() {
   try { render(await api('/api/state?player=' + (me || ''))); } catch {}
 }
-poll();
-setInterval(poll, 2000);
+if (room) { poll(); setInterval(poll, 2000); }
+else show('code');
 </script>
 </body>
 </html>
