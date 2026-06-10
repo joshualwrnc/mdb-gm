@@ -16,6 +16,12 @@ node server.js
 
 No dependencies, state lives in memory. **Reset** on the host page wipes everything for a new game.
 
+### Sharing a link with the team
+
+- **Same office wifi:** just share `http://<your-ip>:3000` (find your IP with `ipconfig` / `ifconfig`).
+- **Remote folks:** keep `node server.js` running and in a second terminal run `npx localtunnel --port 3000` — it prints a public https link anyone can open. The link lives as long as the command runs.
+- **Permanent:** deploy this repo to a free Node host (e.g. Render) with start command `node server.js`.
+
 ## Single-screen version (no server)
 
 Open `index.html` in a browser. The host pastes the collected facts as `Name: fact` lines and runs the game on a shared screen.
