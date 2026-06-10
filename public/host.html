@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Host — Guess Who</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>Host controls 🎛️</h1>
+  <p class="sub">Share the main page link with the team, then run the game from here.</p>
+
+  <p class="progress" id="info"></p>
+  <div class="fact-card hidden" id="fact"></div>
+  <p class="reveal hidden" id="who"></p>
+  <ul class="votes" id="votes"></ul>
+  <table id="scores" class="hidden"></table>
+
+  <div class="controls">
+    <button id="startBtn" onclick="act('start')">Start game</button>
+    <button id="revealBtn" class="hidden" onclick="act('reveal')">Reveal answer</button>
+    <button id="nextBtn" class="hidden" onclick="act('next')">Next fact →</button>
+    <button class="secondary" onclick="if(confirm('Reset the whole game? All facts and scores are wiped.')) act('reset')">Reset</button>
+  </div>
+  <p id="err" class="err"></p>
+</main>
+
+<script>
+async function api(path, data) {
+  const r = await fetch(path, data ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) } : undefined);
+  return r.json();
+}
+
+async function act(action) {
+  const r = await api('/api/host', { action });
+  document.getElementById('err').textContent = r.error || '';
+  poll();
+}
+
+function toggle(id, on) { document.getElementById(id).classList.toggle('hidden', !on); }
+
+async function poll() {
+  const s = await api('/api/state?player=');
+  const info = document.getElementById('info');
+  toggle('startBtn', s.phase === 'lobby');
+  toggle('revealBtn', s.phase === 'vote');
+  toggle('nextBtn', s.phase === 'reveal');
+  toggle('fact', s.phase === 'vote' || s.phase === 'reveal');
+  toggle('who', s.phase === 'reveal');
+  toggle('scores', s.phase === 'done');
+  document.getElementById('votes').innerHTML = '';
+
+  if (s.phase === 'lobby') {
+    info.textContent = `${s.playerCount} players in: ${s.names.join(', ') || '(nobody yet)'}`;
+  } else if (s.phase === 'vote') {
+    info.textContent = `Fact ${s.round} of ${s.totalRounds} — ${s.votesIn} of ${s.playerCount - 1} votes in`;
+    document.getElementById('fact').textContent = `“${s.fact}”`;
+  } else if (s.phase === 'reveal') {
+    info.textContent = `Fact ${s.round} of ${s.totalRounds}`;
+    document.getElementById('fact').textContent = `“${s.fact}”`;
+    const who = document.getElementById('who');
+    who.innerHTML = 'It was <b></b>!';
+    who.querySelector('b').textContent = s.author;
+    const ul = document.getElementById('votes');
+    for (const [name, voters] of Object.entries(s.breakdown || {})) {
+      const li = document.createElement('li');
+      li.textContent = `${name} ← ${voters.join(', ')}` + (name === s.author ? ' ✅' : '');
+      ul.appendChild(li);
+    }
+  } else if (s.phase === 'done') {
+    info.textContent = 'Game over! 🏆';
+    document.getElementById('scores').innerHTML = '<tr><th>#</th><th>Player</th><th>Correct guesses</th></tr>' +
+      s.scores.map((p, i) => `<tr><td>${i === 0 ? '🥇' : i + 1}</td><td></td><td>${p.score}</td></tr>`).join('');
+    [...document.querySelectorAll('#scores td:nth-child(2)')].forEach((td, i) => td.textContent = s.scores[i].name);
+  }
+}
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

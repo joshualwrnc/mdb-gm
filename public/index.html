@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guess Who: Fun Fact Edition</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>Guess Who: Fun Fact Edition 🕵️</h1>
+  <p class="sub">Submit a fun fact, then vote on whose fact is whose.</p>
+
+  <!-- Join -->
+  <section id="join">
+    <input id="name" placeholder="Your name" maxlength="40">
+    <textarea id="fact" placeholder="Your fun fact (kept secret until reveal!)" maxlength="300"></textarea>
+    <p id="joinErr" class="err hidden"></p>
+    <button onclick="join()">Submit my fact</button>
+  </section>
+
+  <!-- Waiting room -->
+  <section id="lobby" class="hidden">
+    <div class="fact-card">You're in, <b id="lobbyName"></b>! 🎉<br>Waiting for the host to start…</div>
+    <p class="status"><span id="lobbyCount"></span> players have submitted facts.</p>
+  </section>
+
+  <!-- Voting -->
+  <section id="vote" class="hidden">
+    <p class="progress" id="voteRound"></p>
+    <div class="fact-card" id="voteFact"></div>
+    <p class="status hidden" id="mineNote">🤫 This one's yours — act natural. No voting for you this round.</p>
+    <div class="names" id="voteNames"></div>
+    <p class="status" id="voteStatus"></p>
+  </section>
+
+  <!-- Reveal -->
+  <section id="reveal" class="hidden">
+    <p class="progress" id="revealRound"></p>
+    <div class="fact-card" id="revealFact"></div>
+    <p class="reveal" id="revealWho"></p>
+    <ul class="votes" id="revealVotes"></ul>
+    <p class="status">Waiting for the host to continue…</p>
+  </section>
+
+  <!-- Final -->
+  <section id="done" class="hidden">
+    <h2>Final scores 🏆</h2>
+    <table id="scoreTable"></table>
+  </section>
+</main>
+
+<script>
+let me = localStorage.getItem('gw-player');
+let lastPhase = null;
+
+async function api(path, data) {
+  const r = await fetch(path, data ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) } : undefined);
+  return r.json();
+}
+
+async function join() {
+  const name = document.getElementById('name').value;
+  const fact = document.getElementById('fact').value;
+  const r = await api('/api/join', { name, fact });
+  const err = document.getElementById('joinErr');
+  if (r.error) { err.textContent = r.error; err.classList.remove('hidden'); return; }
+  me = r.id;
+  localStorage.setItem('gw-player', me);
+  poll();
+}
+
+function show(id) {
+  for (const s of ['join','lobby','vote','reveal','done'])
+    document.getElementById(s).classList.toggle('hidden', s !== id);
+}
+
+async function vote(name, btn) {
+  const r = await api('/api/vote', { player: me, vote: name });
+  if (!r.error) {
+    [...btn.parentNode.children].forEach(b => b.classList.remove('picked'));
+    btn.classList.add('picked');
+  }
+}
+
+function render(s) {
+  if (s.phase === 'lobby') {
+    if (!s.joined) { show('join'); return; }
+    show('lobby');
+    document.getElementById('lobbyName').textContent = s.myName;
+    document.getElementById('lobbyCount').textContent = s.playerCount;
+  } else if (s.phase === 'vote') {
+    show('vote');
+    document.getElementById('voteRound').textContent = `Fact ${s.round} of ${s.totalRounds}`;
+    document.getElementById('voteFact').textContent = `“${s.fact}”`;
+    document.getElementById('mineNote').classList.toggle('hidden', !s.isMine);
+    document.getElementById('voteStatus').textContent = `${s.votesIn} vote${s.votesIn === 1 ? '' : 's'} in`;
+    const div = document.getElementById('voteNames');
+    if (lastPhase !== 'vote' || div.dataset.round != s.round) {
+      div.dataset.round = s.round;
+      div.innerHTML = '';
+      if (!s.isMine) s.names.forEach(n => {
+        const b = document.createElement('button');
+        b.textContent = n;
+        if (n === s.myVote) b.classList.add('picked');
+        b.onclick = () => vote(n, b);
+        div.appendChild(b);
+      });
+    }
+  } else if (s.phase === 'reveal') {
+    show('reveal');
+    document.getElementById('revealRound').textContent = `Fact ${s.round} of ${s.totalRounds}`;
+    document.getElementById('revealFact').textContent = `“${s.fact}”`;
+    const mine = s.myVote ? (s.myVote === s.author ? ' You got it ✅' : ` You guessed ${s.myVote} ❌`) : '';
+    document.getElementById('revealWho').innerHTML = `It was <b></b>!` + mine;
+    document.getElementById('revealWho').querySelector('b').textContent = s.author;
+    const ul = document.getElementById('revealVotes');
+    ul.innerHTML = '';
+    for (const [name, voters] of Object.entries(s.breakdown || {})) {
+      const li = document.createElement('li');
+      li.textContent = `${name} ← ${voters.join(', ')}` + (name === s.author ? ' ✅' : '');
+      ul.appendChild(li);
+    }
+  } else if (s.phase === 'done') {
+    show('done');
+    document.getElementById('scoreTable').innerHTML = '<tr><th>#</th><th>Player</th><th>Correct guesses</th></tr>' +
+      s.scores.map((p, i) => `<tr><td>${i === 0 ? '🥇' : i + 1}</td><td></td><td>${p.score}</td></tr>`).join('');
+    [...document.querySelectorAll('#scoreTable td:nth-child(2)')].forEach((td, i) => td.textContent = s.scores[i].name);
+  }
+  lastPhase = s.phase;
+}
+
+async function poll() {
+  try { render(await api('/api/state?player=' + (me || ''))); } catch {}
+}
+poll();
+setInterval(poll, 2000);
+</script>
+</body>
+</html>

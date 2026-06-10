@@ -1,0 +1,28 @@
+:root { --bg:#1a1d21; --card:#222529; --accent:#36c5f0; --good:#2eb67d; --bad:#e01e5a; --text:#e8e8e8; --muted:#9a9da1; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; min-height:100vh; }
+main { width:100%; max-width:560px; padding:24px; }
+h1 { font-size:1.5rem; margin:0 0 4px; }
+.sub { color:var(--muted); margin:0 0 24px; }
+input, textarea { width:100%; background:var(--card); color:var(--text); border:1px solid #3a3d42; border-radius:8px; padding:12px; font-size:1rem; font-family:inherit; margin-bottom:12px; }
+textarea { min-height:90px; resize:vertical; }
+button { background:var(--accent); color:#10243a; border:none; border-radius:8px; padding:12px 20px; font-size:1rem; font-weight:600; cursor:pointer; }
+button:hover { filter:brightness(1.1); }
+button:disabled { opacity:0.5; cursor:default; }
+button.secondary { background:#3a3d42; color:var(--text); }
+.hidden { display:none; }
+.fact-card { background:var(--card); border-radius:12px; padding:24px; margin:16px 0; font-size:1.25rem; line-height:1.5; text-align:center; }
+.progress, .status { color:var(--muted); text-align:center; }
+.names { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:16px 0; }
+.names button { padding:10px 16px; background:#3a3d42; color:var(--text); font-weight:500; }
+.names button.picked { outline:2px solid var(--accent); }
+.names button.answer { background:var(--good); color:#08291c; }
+.reveal { text-align:center; font-size:1.15rem; margin:16px 0; }
+.reveal b { color:var(--good); }
+.err { color:var(--bad); }
+table { width:100%; border-collapse:collapse; margin-top:12px; }
+td, th { padding:8px 10px; text-align:left; border-bottom:1px solid #3a3d42; }
+.big { font-size:2.5rem; text-align:center; margin:8px 0; }
+.controls { display:flex; gap:10px; justify-content:center; margin-top:12px; }
+ul.votes { list-style:none; padding:0; }
+ul.votes li { padding:6px 0; border-bottom:1px solid #3a3d42; }
